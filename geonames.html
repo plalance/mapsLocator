@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" href="css/bootstrap.css"/>
+    <link rel="stylesheet" href="css/style.css"/>
+    <script src="js/jquery-1.12.3.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+</head>
+<body>
+<div class="google_result">
+    <h1>Infos API Google + Geocoding</h1>
+    <div id="locationField">
+        <input id="autocomplete" placeholder="Entrer adresse" type="text">
+    </div>
+
+    <p>Ville :<input class="field" id="locality" disabled="true"></p>
+    <p>Code postal : <span><input class="field" id="postal_code" disabled="true"></span></p>
+    <br/>
+    <p>Région : <span><input class="field" id="administrative_area_level_1" disabled="true"></span></p>
+    <p>Pays : <span><input class="field" id="country" disabled="true"></span></p>
+    <p id="country_long">Pays (Nom Long) : <span></span></p>
+    <br/>
+    <p id="lat">Latitude : <span></span> </p>
+    <p id="lon">Longitude : <span></span> </p>
+    <p id="place_id">Identifiant Google placeID : <span></span></p>
+    <br/>
+    <p id="distance_zone">Distance en kilomètre par rapport à Paris : <span></span></p>
+</div>
+<div class="geonames_extension">
+    <h1>Infos API Geonames</h1>
+</div>
+</body>
+<script>
+    var placeSearch, autocomplete;
+
+    var componentForm = {
+        street_number: 'short_name',
+        route: 'long_name',
+        locality: 'long_name',
+        administrative_area_level_1: 'short_name',
+        country: 'short_name',
+        postal_code: 'short_name'
+    };
+
+    function initAutocomplete() {
+        var options = {
+//            types: ['(cities)']
+            types: ['geocode']
+        };
+
+        autocomplete = new google.maps.places.Autocomplete(
+                (document.getElementById('autocomplete')),
+                options
+        );
+
+        autocomplete.addListener('place_changed', fillInAddress);
+    }
+
+    function fillInAddress() {
+        // Get the place details from the autocomplete object.
+        var place = autocomplete.getPlace();
+
+        for (var component in componentForm) {
+            document.getElementById(component).value = '';
+            document.getElementById(component).disabled = false;
+        }
+
+//         Get each component of the address from the place details
+//         and fill the corresponding field on the form.
+        for (var i = 0; i < place.address_components.length; i++) {
+            var addressType = place.address_components[i].types[0];
+            if (componentForm[addressType]) {
+                var val = place.address_components[i][componentForm[addressType]];
+                document.getElementById(addressType).value = val;
+            }
+        }
+        $("#lat > span").html(place.geometry.location.lat());
+        $("#lon > span").html(place.geometry.location.lng());
+        $("#place_id > span").html(place.place_id);
+        $("#country_long > span").html(place.address_components[3]['long_name']);
+
+        var myLatlng1 = new google.maps.LatLng(
+                place.geometry.location.lat(),
+                place.geometry.location.lng()
+        );
+        var myLatlng2 = new google.maps.LatLng(
+                48.85661400000001,
+                2.3522219000000177
+        );
+
+        var distance = google.maps.geometry.spherical.computeDistanceBetween(myLatlng1, myLatlng2);
+
+        var km = (distance/1000).toFixed(3) +' km';
+
+        $("#distance_zone >span").html(km);
+
+    }
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?signed_in=true&libraries=geometry,places&callback=initAutocomplete" async defer></script>
+</html>

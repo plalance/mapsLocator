@@ -1,0 +1,36 @@
+html {
+    height: 100%;
+}
+
+body {
+    height: 100%;
+}
+
+.box {
+    display: block;
+    width: auto;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: scroll;s
+    background-color: #000000;
+}
+
+.inbox {
+    display: inline-block;
+    padding: 10px;
+    margin: 0;
+    height: 100%;
+    width: 100%;
+}
+
+.bg-grey {
+    background-color: grey;
+}
+
+.bg-green {
+    background-color: green;
+}
+
+.bg-red {
+    background-color: red;
+}

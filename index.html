@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <link rel="stylesheet" href="css/bootstrap.css"/>
+    <link rel="stylesheet" href="css/style.css"/>
+    <script src="js/jquery-1.12.3.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+</head>
+<body>
+<h2>Google Map API V3 + Geocoding API + Autocomplete API</h2>
+<div id="locationField">
+    <input id="autocomplete" placeholder="Entrer adresse" type="text">
+</div>
+
+<p>Ville :<input class="field" id="locality" disabled="true"></p>
+<!--<p>Numéro de rue ( si renseigné ) : <span><input class="field" id="street_number" disabled="true"></span></p>-->
+<!--<p>Rue ( si renseigné ): <span><input class="field" id="route" disabled="true"></span></p>-->
+<p>Code postal : <span><input class="field" id="postal_code" disabled="true"></span></p>
+<br/>
+<p>Région : <span><input class="field" id="administrative_area_level_1" disabled="true"></span></p>
+<p>Pays : <span><input class="field" id="country" disabled="true"></span></p>
+<p id="country_long">Pays (Nom Long) : <span></span></p>
+<br/>
+<p id="lat">Latitude : <span></span></p>
+<p id="lon">Longitude : <span></span></p>
+<p id="place_id">Identifiant Google placeID : <span></span></p>
+<br/>
+<p id="distance_zone">Distance en kilomètre par rapport à Paris : <span></span></p>
+<h2>Geonames API + Jquery / Ajax / Php</h2>
+<h3>Les villes à proximité (20km pour 5000 habitants)</h3>
+<div id="databox">
+    <select name="" id="selectbox">
+        <option value="none">Villes à proximité</option>
+    </select>
+</div>
+<h2>Reverse Geocoding</h2>
+<p>Une fois la ville selectionnée, le reverse geocoding nous renvoie l'objet google, on stocke l'identifiant en base de
+    donnée... et on peut s'en reservir</p>
+<p id="reverseresult">Ville sélectionnée : <span></span></p>
+<input type="button" id="boutonmail" value="Envoyer un mail">
+</body>
+<script>
+    var placeSearch, autocomplete;
+
+    var componentForm = {
+//        street_number: 'short_name',
+//        route: 'long_name',
+        locality: 'long_name',
+        administrative_area_level_1: 'short_name',
+        country: 'short_name',
+        postal_code: 'short_name'
+    };
+
+    function initAutocomplete(recharge) {
+        var options = {
+//            types: ['(cities)']
+            types: ['geocode']
+        };
+
+        autocomplete = new google.maps.places.Autocomplete(
+                (document.getElementById('autocomplete')),
+                options
+        );
+
+        autocomplete.addListener('place_changed', fillInAddress);
+    }
+
+    function fillInAddress() {
+        // Get the place details from the autocomplete object.
+        var place = autocomplete.getPlace();
+        console.log(place);
+
+        for (var component in componentForm) {
+            document.getElementById(component).value = '';
+            document.getElementById(component).disabled = false;
+        }
+
+//         Get each component of the address from the place details
+//         and fill the corresponding field on the form.
+        for (var i = 0; i < place.address_components.length; i++) {
+            var addressType = place.address_components[i].types[0];
+            if (componentForm[addressType]) {
+                var val = place.address_components[i][componentForm[addressType]];
+                document.getElementById(addressType).value = val;
+            }
+        }
+        $("#lat > span").html(place.geometry.location.lat());
+        $("#lon > span").html(place.geometry.location.lng());
+        $("#place_id > span").html(place.place_id);
+        $("#country_long > span").html(place.address_components[3]['long_name']);
+        $("#selectbox").html("");
+
+        var myLatlng1 = new google.maps.LatLng(
+                place.geometry.location.lat(),
+                place.geometry.location.lng()
+        );
+        var myLatlng2 = new google.maps.LatLng(
+                48.85661400000001,
+                2.3522219000000177
+        );
+
+        var distance = google.maps.geometry.spherical.computeDistanceBetween(myLatlng1, myLatlng2);
+
+        var km = (distance / 1000).toFixed(3) + ' km';
+
+        $("#distance_zone >span").html(km);
+
+        lat = place.geometry.location.lat();
+        lng = place.geometry.location.lng();
+
+        setTimeout(function () {
+            $.ajax({
+                url: "cityController.php",
+                type: 'GET',
+                dataType: 'json',
+                data: {
+                    "latitude": lat,
+                    "longitude": lng
+                },
+
+                success: function (data) {
+                    console.log(data);
+//                    for(var i in data.geonames)
+                    for (i = 1; i < data.geonames.length; i++) {
+                        $("#selectbox").append(
+                                "<option 'lat'='" + data.geonames[i].lat + "'lng='" + data.geonames[i].lng + "' value='" + data.geonames[i].lat + "," + data.geonames[i].lng + "'>" + data.geonames[i].name + " - " + data.geonames[i].countryName + " - " + data.geonames[i].distance + "km </option>"
+                        );
+                    }
+                },
+
+                error: function (data, statut) {
+                    $message = "erreur ajax";
+                    console.log($message);
+                }
+            });
+
+            $("#selectbox").click(function () {
+                value = $(this).val();
+//                console.log(value);
+                $.getJSON("https://maps.googleapis.com/maps/api/geocode/json?latlng=" + value, function (data) {
+                    console.log(data.results[0]);
+
+                    for (var i = 0; i < data.results[0].address_components.length; i++) {
+                        var addressType = data.results[0].address_components[i].types[0];
+                        if (componentForm[addressType]) {
+                            var val = data.results[0].address_components[i][componentForm[addressType]];
+                            document.getElementById(addressType).value = val;
+                        }
+                    }
+                    $("#lat > span").html(data.results[0].geometry.location.lat);
+                    $("#lon > span").html(data.results[0].geometry.location.lng);
+
+                });
+            });
+        }, 100);
+    }
+
+    $("#boutonmail").click(function () {
+        $.ajax({
+            url: "mail.php",
+            type: 'GET',
+
+            success: function (data) {
+                console.log("aller vérifier les mails");
+            },
+
+            error: function (data, statut) {
+                $message = "erreur ajax";
+                console.log($message);
+            }
+        });
+    });
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAa32jjKPxUbaDETPW-93GIulPi96K6OzU&signed_in=true&libraries=geometry,places&callback=initAutocomplete"
+        async defer></script>
+<script type="text/javascript">
+</script>
+</html>
